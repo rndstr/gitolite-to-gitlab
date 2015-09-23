@@ -47,7 +47,6 @@ create_repo () {
 
     set +e
     body=$(curl --silent --header "PRIVATE-TOKEN: $gitlab_token" "$gitlab_url/api/v3/projects" --data "name=$lab_repo")
-    echo $body
     if [[ $body == *"has already been taken"* ]]; then
         log "$lite_repo@gitlab: already exists"
     fi
