@@ -2,16 +2,32 @@
 #
 # A script to migrate gitolite repositories to gitlab.
 #
-# Downloads the repository list from the `gitolite-admin` repository and mirrors all repositories to a gitlab host.
+# Downloads the repository list from the `gitolite-admin` repository and mirrors all repositories to a gitlab host
+# under a given user as a private repo.
 #
 # https://github.com/rndstr/gitolite-to-gitlab
 
 usage () {
-    echo "usage: $(basename $0) [-i] [-s proto<gitolite-admin-uri> <gitlab-url> <gitlab-user> <gitlab-token>" 1>&2
+    exec 4<&1
+    exec 1>&2
+    echo "usage: $(basename $0) [-i] <gitolite-admin-uri> <gitlab-url> <gitlab-user> <gitlab-token>"
+    echo
+    echo "  -i  Confirm each repository to migrate"
+    echo "  -h  Display this help"
+    echo
+    echo "  gitolite-admin-uri  Repository URI for the gitolite-admin repo (e.g., gitolite@example.com:gitolite-admin.git)"
+    echo "  gitlab-url          Where your GitLab is hosted (e.g., https://www.gitlab.com)"
+    echo "  gitlab-user         Username for which the projects should be created"
+    echo "  gitlab-token        Private token for the API to create the projects (see https://www.gitlab.com/profile/account)"
+    exec 1<&4
 }
 
 log () {
     echo -e "\e[0;33m>>> $*\e[0m"
+}
+
+success () {
+    echo -e "\e[0;32m>>> $*\e[0m"
 }
 
 error () {
@@ -19,8 +35,7 @@ error () {
 }
 
 clone_repo () {
-    lite_repo=$1
-    lab_repo=$2
+    lite_repo=$1; lab_repo=$2
 
     target=$cwd/tmp/$lab_repo
     repo_uri=${gitolite_base_uri}:${lite_repo}.git
@@ -41,8 +56,8 @@ clone_repo () {
 }
 
 create_repo () {
-    lite_repo=$1
-    lab_repo=$2
+    lite_repo=$1; lab_repo=$2
+
     log "$lite_repo@gitlab: create project $gitlab_url/$gitlab_user/$lab_repo"
 
     set +e
@@ -54,20 +69,30 @@ create_repo () {
 }
 
 push_repo () {
-    lite_repo=$1
-    lab_repo=$2
+    lite_repo=$1; lab_repo=$2
+
     lab_uri=git@$gitlab_domain:${gitlab_user}/${lab_repo}.git
-    log "$repo@gitlab: upload to $lab_uri"
+    log "$lite_repo@gitlab: upload to $lab_uri"
 
     cd $cwd/tmp/$lite_repo
     git push --mirror $lab_uri
+    success "$lite_repo: migrated"
+}
+
+clean_repo () {
+    lab_repo=$1
+    test -z $lab_repo && { error "this doesn't seem right, repo is empty; bailing"; exit 1; }
+    cd $cwd
+    rm -rf $cwd/tmp/$lab_repo
+    touch $cwd/tmp/${lab_repo}-migrated
 }
 
 
 interactive=0
-while getopts i name; do
+while getopts hi name; do
     case $name in
         i) interactive=1;;
+        h) usage; exit 1;;
         \?) usage; exit 2;;
     esac
 done
@@ -138,9 +163,13 @@ for lite_repo in $repos; do
         lab_repo=$(echo $lite_repo | sed 's/[^a-zA-Z0-9_\.-]/-/g')
     fi
 
+    if [ -f $cwd/tmp/${lab_repo}-migrated ]; then
+        success "$lite_repo: already migrated"
+        continue
+    fi
+
     clone_repo $lite_repo $lab_repo
     create_repo $lite_repo $lab_repo
     push_repo $lite_repo $lab_repo
-
-    break
+    clean_repo $lab_repo
 done
