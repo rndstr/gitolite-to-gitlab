@@ -61,7 +61,7 @@ create_repo () {
     log "$lite_repo@gitlab: create project $gitlab_url/$gitlab_user/$lab_repo"
 
     set +e
-    body=$(curl --silent --header "PRIVATE-TOKEN: $gitlab_token" "$gitlab_url/api/v3/projects" --data "name=$lab_repo")
+    body=$(curl --silent --header "PRIVATE-TOKEN: $gitlab_token" "$gitlab_url/api/v3/projects" --data "name=$lab_repo&path=$lab_repo")
     if [[ $body == *"has already been taken"* ]]; then
         log "$lite_repo@gitlab: already exists"
     fi
