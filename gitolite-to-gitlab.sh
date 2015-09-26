@@ -74,7 +74,7 @@ push_repo () {
     lab_uri=git@$gitlab_domain:${gitlab_user}/${lab_repo}.git
     log "$lite_repo@gitlab: upload to $lab_uri"
 
-    cd $cwd/tmp/$lite_repo
+    cd $cwd/tmp/$lab_repo
     git push --mirror $lab_uri
     success "$lite_repo: migrated"
 }
@@ -159,7 +159,7 @@ for lite_repo in $repos; do
 
     lab_repo=$lite_repo
     if [[ ! $lab_repo =~ ^[a-zA-Z0-9_\.-]+$ ]]; then
-        log "$lite_repo: found invalid characters, replace with dash"
+        log "$lite_repo: invalid characters in gitolite name, replacing them with dash for gitlab"
         lab_repo=$(echo $lite_repo | sed 's/[^a-zA-Z0-9_\.-]/-/g')
     fi
 
